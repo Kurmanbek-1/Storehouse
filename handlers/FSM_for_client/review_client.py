@@ -2,8 +2,8 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-
-from keyboards import buttons
+from config import Admins
+import buttons
 from datetime import datetime
 
 # =======================================================================================================================
@@ -19,8 +19,11 @@ class review_fsm(StatesGroup):
 
 
 async def fsm_start(message: types.Message):
-    await review_fsm.articule.set()
-    await message.answer("Артикуль товара?", reply_markup=buttons.cancel_markup)
+    if message.from_user.id in Admins:
+        await message.answer('Вы сотдруник или админ, вы не можете оcтавить отзыв!')
+    else:
+        await review_fsm.articule.set()
+        await message.answer("Артикуль товара?", reply_markup=buttons.cancel_markup)
 
 
 async def load_articule(message: types.Message, state: FSMContext):
