@@ -13,6 +13,8 @@ class FSM_pre_order_for_admins(StatesGroup):
     articule = State()
     quantity = State()
     category = State()
+    price = State()
+    date = State()
     photos = State()
     submit = State()
 
@@ -54,6 +56,20 @@ async def load_category(message: types.Message, state: FSMContext):
         data['category'] = message.text.replace("/", "")
 
     await FSM_pre_order_for_admins.next()
+    await message.answer("Цена товара?")
+
+
+async def load_price(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['price'] = message.text
+    await FSM_pre_order_for_admins.next()
+    await message.answer("Дата выхода?")
+
+
+async def load_date(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['date'] = message.text
+    await FSM_pre_order_for_admins.next()
     await message.answer("Отправьте фотографии")
 
 
@@ -64,7 +80,7 @@ async def load_photos(message: types.Message, state: FSMContext):
         else:
             data["photos"] = [message.photo[-1].file_id]
 
-    await message.answer(f"Дабавлено!", reply_markup=buttons.finish_load_photos)
+    await message.answer(f"Добавлено!", reply_markup=buttons.finish_load_photos)
 
 
 async def finish_load_photos(message: types.Message, state: FSMContext):
@@ -79,9 +95,10 @@ async def finish_load_photos(message: types.Message, state: FSMContext):
 
         await bot.send_media_group(chat_id=message.from_user.id, media=media_group)
         await message.answer(text=f"Информация: {data['info']}\n"
-                             f"Артикул: {data['articule']}\n"
-                             f"Количество товара: {data['quantity']}\n"
-                             f"Категория: {data['category']}", reply_markup=buttons.submit_markup)
+                                  f"Артикул: {data['articule']}\n"
+                                  f"Количество товара: {data['quantity']}\n"
+                                  f"Категория: {data['category']}"
+                                  f"Цена: {data['price']}", reply_markup=buttons.submit_markup)
 
         await message.answer("Всё правильно?", reply_markup=buttons.submit_markup)
         await FSM_pre_order_for_admins.next()
@@ -117,6 +134,8 @@ def register_pre_order_for_admins(dp: Dispatcher):
     dp.register_message_handler(data_arcticule, state=FSM_pre_order_for_admins.articule)
     dp.register_message_handler(load_quantity, state=FSM_pre_order_for_admins.quantity)
     dp.register_message_handler(load_category, state=FSM_pre_order_for_admins.category)
+    dp.register_message_handler(load_price, state=FSM_pre_order_for_admins.price)
+    dp.register_message_handler(load_date, state=FSM_pre_order_for_admins.date)
 
     dp.register_message_handler(load_photos, state=FSM_pre_order_for_admins.photos, content_types=['photo'])
     dp.register_message_handler(finish_load_photos, commands=['Сохранить_фотки!'],

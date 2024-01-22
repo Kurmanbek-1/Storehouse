@@ -6,7 +6,6 @@ from config import bot, Admins
 import buttons
 
 
-
 # =======================================================================================================================
 
 class FSM_fill_products(StatesGroup):
@@ -14,6 +13,7 @@ class FSM_fill_products(StatesGroup):
     articule = State()
     quantity = State()
     category = State()
+    price = State()
     photos = State()
     submit = State()
 
@@ -55,6 +55,13 @@ async def load_category(message: types.Message, state: FSMContext):
         data['category'] = message.text.replace("/", "")
 
     await FSM_fill_products.next()
+    await message.answer(text="Цена товара?", reply_markup=buttons.cancel_markup_for_admins)
+
+
+async def load_price(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['price'] = message.text
+    await FSM_fill_products.next()
     await message.answer(text="Отправьте фотографии", reply_markup=buttons.cancel_markup_for_admins)
 
 
@@ -65,7 +72,7 @@ async def load_photos(message: types.Message, state: FSMContext):
         else:
             data["photos"] = [message.photo[-1].file_id]
 
-    await message.answer(f"Дабавлено!",
+    await message.answer(f"Добавлено!",
                          reply_markup=buttons.finish_load_photos)
 
 
@@ -81,9 +88,10 @@ async def finish_load_photos(message: types.Message, state: FSMContext):
 
         await bot.send_media_group(chat_id=message.from_user.id, media=media_group)
         await message.answer(text=f"Информация: {data['info']}\n"
-                             f"Артикул: {data['articule']}\n"
-                             f"Количество товара: {data['quantity']}\n"
-                             f"Категория товара: {data['category']}", reply_markup=buttons.submit_markup)
+                                  f"Цена товара: {data['price']}"
+                                  f"Артикул: {data['articule']}\n"
+                                  f"Количество товара: {data['quantity']}\n"
+                                  f"Категория товара: {data['category']}", reply_markup=buttons.submit_markup)
 
         await message.answer("Всё правильно?", reply_markup=buttons.submit_markup)
         await FSM_fill_products.next()
@@ -120,6 +128,7 @@ def register_fill_products(dp: Dispatcher):
     dp.register_message_handler(load_arcticle, state=FSM_fill_products.articule)
     dp.register_message_handler(load_quantity, state=FSM_fill_products.quantity)
     dp.register_message_handler(load_category, state=FSM_fill_products.category)
+    dp.register_message_handler(load_price, state=FSM_fill_products.price)
 
     dp.register_message_handler(load_photos, state=FSM_fill_products.photos, content_types=['photo'])
     dp.register_message_handler(finish_load_photos, commands=['Сохранить_фотки!'],

@@ -5,6 +5,7 @@ StartClient = ReplyKeyboardMarkup(resize_keyboard=True,
                                   one_time_keyboard=True,
                                   row_width=2
                                   ).add(KeyboardButton('/Товары!'),
+                                        KeyboardButton('/Предзаказы!'),
                                         KeyboardButton('/Заказать!'),
                                         KeyboardButton('/Предзаказать'),
                                         KeyboardButton('/ТехПоддержка'),
