@@ -2,8 +2,9 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from config import bot, Admins
+from config import bot, Admins, data_base
 import buttons
+from db.ORM import save_preorder_info, save_preorder_photo, get_last_inserted_product_id
 
 
 # =======================================================================================================================
@@ -13,6 +14,8 @@ class FSM_pre_order_for_admins(StatesGroup):
     articule = State()
     quantity = State()
     category = State()
+    price = State()
+    date = State()
     photos = State()
     submit = State()
 
@@ -37,14 +40,14 @@ async def load_info(message: types.Message, state: FSMContext):
 
 async def data_arcticule(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['articule'] = message.text
+        data['preorder_article'] = message.text
     await FSM_pre_order_for_admins.next()
     await message.answer('Количество товаров?')
 
 
 async def load_quantity(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['quantity'] = message.text
+        data['quantity'] = int(message.text)
     await FSM_pre_order_for_admins.next()
     await message.answer('Категория товаров?', reply_markup=buttons.CategoryButtons)
 
@@ -53,6 +56,20 @@ async def load_category(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['category'] = message.text.replace("/", "")
 
+    await FSM_pre_order_for_admins.next()
+    await message.answer("Цена товара?")
+
+
+async def load_price(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['price'] = message.text
+    await FSM_pre_order_for_admins.next()
+    await message.answer("Дата выхода?")
+
+
+async def load_date(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['product_release_date'] = message.text
     await FSM_pre_order_for_admins.next()
     await message.answer("Отправьте фотографии")
 
@@ -64,41 +81,58 @@ async def load_photos(message: types.Message, state: FSMContext):
         else:
             data["photos"] = [message.photo[-1].file_id]
 
-    await message.answer(f"Дабавлено!", reply_markup=buttons.finish_load_photos)
+    await message.answer(f"Добавлено!", reply_markup=buttons.finish_load_photos)
 
 
 async def finish_load_photos(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        last_photo = None
+        preorder_info_text = (
+            f"Информация: {data['info']}\n"
+            f"Артикул: {data['preorder_article']}\n"
+            f"Количество товара: {data['quantity']}\n"
+            f"Категория: {data['category']}\n"
+            f"Цена: {data['price']}\n"
+            f"Дата выхода: {data['product_release_date']}"
+        )
 
-        for i in data['photos']:
-            if i in media_group:
-                pass
-            last_photo = types.InputMediaPhoto(i)
-            media_group.attach_photo(last_photo)
+        media_group = [types.InputMediaPhoto(media=image) for image in data['photos'][:-1]]
 
-        await bot.send_media_group(chat_id=message.from_user.id, media=media_group)
-        await message.answer(text=f"Информация: {data['info']}\n"
-                             f"Артикул: {data['articule']}\n"
-                             f"Количество товара: {data['quantity']}\n"
-                             f"Категория: {data['category']}", reply_markup=buttons.submit_markup)
+        last_image = data['photos'][-1]
+        last_media = types.InputMediaPhoto(media=last_image, caption=preorder_info_text)
+
+        media_group.append(last_media)
+
+        await bot.send_media_group(chat_id=message.chat.id,
+                                   media=media_group)
 
         await message.answer("Всё правильно?", reply_markup=buttons.submit_markup)
         await FSM_pre_order_for_admins.next()
 
 
 async def load_submit(message: types.Message, state: FSMContext):
-    if message.text == "да":
-        await message.answer('Записано! ✅', reply_markup=buttons.StartAdmin)
-        # Запись в базу данных
-        await state.finish()
+    async with state.proxy() as data:
+        if message.text == "да":
+            await data_base.connect()
 
-    elif message.text.lower() == "нет":
-        await message.answer('Отменено!', reply_markup=buttons.StartClient)
-        await state.finish()
+            # Записываем информацию о товаре в таблицу products
+            await save_preorder_info(state)
 
-    else:
-        await message.answer("Пожалуйста, выберите Да или Нет.")
+            # Получаем ID последнего добавленного товара
+            # Это нужно, чтобы привязать фотографии к данному товару
+            product_id = await get_last_inserted_product_id()
+
+            # Записываем фотографии товара в таблицу photos
+            for photo in data['photos']:
+                await save_preorder_photo(product_id, photo)
+            await message.answer('Записано! ✅', reply_markup=buttons.StartAdmin)
+            await state.finish()
+
+        elif message.text.lower() == "нет":
+            await message.answer('Отменено!', reply_markup=buttons.StartClient)
+            await state.finish()
+
+        else:
+            await message.answer("Пожалуйста, выберите Да или Нет.")
 
 
 async def cancel_reg(message: types.Message, state: FSMContext):
@@ -117,6 +151,8 @@ def register_pre_order_for_admins(dp: Dispatcher):
     dp.register_message_handler(data_arcticule, state=FSM_pre_order_for_admins.articule)
     dp.register_message_handler(load_quantity, state=FSM_pre_order_for_admins.quantity)
     dp.register_message_handler(load_category, state=FSM_pre_order_for_admins.category)
+    dp.register_message_handler(load_price, state=FSM_pre_order_for_admins.price)
+    dp.register_message_handler(load_date, state=FSM_pre_order_for_admins.date)
 
     dp.register_message_handler(load_photos, state=FSM_pre_order_for_admins.photos, content_types=['photo'])
     dp.register_message_handler(finish_load_photos, commands=['Сохранить_фотки!'],

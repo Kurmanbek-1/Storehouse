@@ -5,6 +5,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from config import Admins
 import buttons
 from datetime import datetime
+from db.ORM import save_reviews_info
 
 # =======================================================================================================================
 
@@ -23,19 +24,19 @@ async def fsm_start(message: types.Message):
         await message.answer('Вы сотдруник или админ, вы не можете оcтавить отзыв!')
     else:
         await review_fsm.articule.set()
-        await message.answer("Артикуль товара?", reply_markup=buttons.cancel_markup)
+        await message.answer("Артикуль товара?", reply_markup=buttons.cancel_button_for_client)
 
 
 async def load_articule(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data["articule"] = message.text
+        data["article_number"] = message.text
     await review_fsm.next()
     await message.answer("Название товара!?")
 
 
 async def load_name(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data["name"] = message.text
+        data["info_product"] = message.text
     await review_fsm.next()
     await message.answer("Отзыв о товаре!?\n" "?/5")
 
@@ -44,36 +45,37 @@ async def load_review(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data["review"] = message.text
     await review_fsm.next()
-    await message.answer("Вы хотите отправить фото товара?", reply_markup=buttons.yesno)
+    await message.answer("Вы хотите отправить фото товара?", reply_markup=buttons.submit_markup)
 
 
 async def submit_photo(message: types.Message, state: FSMContext):
-    if message.text == "Да":
+    if message.text.lower() == "да":
         await review_fsm.next()
         await message.answer("Отправьте фотку товара")
-    elif message.text == 'Нет':
+    elif message.text.lower() == 'нет':
         async with state.proxy() as data:
             data["date"] = datetime.now()
-            await message.answer(f"Артикуль товара: {data['articule']}"
-                                 f"Название товара: {data['name']}\n"
+            data["photo_review"] = None
+            await message.answer(f"Артикуль товара: {data['article_number']}\n"
+                                 f"Название товара: {data['info_product']}\n"
                                  f"Отзыв о товаре: {data['review']}\n")
             await review_fsm.submit.set()
             await message.answer("Все верно?", reply_markup=buttons.submit_markup)
     else:
-        await message.answer("Пожалуйста, выберите Да или Нет.")
+        await message.answer("Пожалуйста, выберите Да или Нет.", reply_markup=buttons.submit_markup)
 
 
 # ...
 
 async def load_photo(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data["photo"] = message.photo[-1].file_id
+        data["photo_review"] = message.photo[-1].file_id
         data["date"] = datetime.now()
         await message.answer_photo(
-            data["photo"],
+            data["photo_review"],
             caption=f"Данные товара: \n"
-                    f"Артикуль товара: {data['articule']}"
-                    f"Название товара: {data['name']}\n"
+                    f"Артикуль товара: {data['article_number']}\n"
+                    f"Название товара: {data['info_product']}\n"
                     f"Отзыв о товаре: {data['review']}\n")
         await review_fsm.next()
         await message.answer("Все верно?", reply_markup=buttons.submit_markup)
@@ -82,27 +84,9 @@ async def load_photo(message: types.Message, state: FSMContext):
 async def load_submit(message: types.Message, state: FSMContext):
     if message.text.lower() == "да":
         async with state.proxy() as data:
-            if 'photo' in data:
-                values = (
-                    data['name'],
-                    data['articule'],
-                    data['review'],
-                    data['city'],
-                    data['photo']
-                )
-            else:
-                values = (
-                    data['name'],
-                    data['articule'],
-                    data['review'],
-                    data['city'],
-                    None
-                )
-
-        # Запись в базу
-
-        await message.answer('Готово!', reply_markup=buttons.StartClient)
-        await state.finish()
+            await save_reviews_info(state)
+            await message.answer('Готово!', reply_markup=buttons.StartClient)
+            await state.finish()
     elif message.text.lower() == 'нет':
         await message.answer('Хорошо, отменено', reply_markup=buttons.StartClient)
         await state.finish()

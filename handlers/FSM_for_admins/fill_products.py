@@ -2,9 +2,9 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from config import bot, Admins
+from config import bot, Admins, data_base
 import buttons
-
+from db.ORM import save_product_info, save_product_photo, get_last_inserted_product_id
 
 
 # =======================================================================================================================
@@ -14,11 +14,9 @@ class FSM_fill_products(StatesGroup):
     articule = State()
     quantity = State()
     category = State()
+    price = State()
     photos = State()
     submit = State()
-
-
-media_group = types.MediaGroup()
 
 
 async def fsm_start(message: types.Message):
@@ -38,14 +36,14 @@ async def load_info(message: types.Message, state: FSMContext):
 
 async def load_arcticle(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['articule'] = message.text
+        data['article_number'] = message.text
     await FSM_fill_products.next()
     await message.answer('Количество товара?')
 
 
 async def load_quantity(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['quantity'] = message.text
+        data['quantity'] = int(message.text)
     await FSM_fill_products.next()
     await message.answer(text='Категория товаров?', reply_markup=buttons.CategoryButtons)
 
@@ -54,6 +52,13 @@ async def load_category(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['category'] = message.text.replace("/", "")
 
+    await FSM_fill_products.next()
+    await message.answer(text="Цена товара?", reply_markup=buttons.cancel_markup_for_admins)
+
+
+async def load_price(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['price'] = message.text
     await FSM_fill_products.next()
     await message.answer(text="Отправьте фотографии", reply_markup=buttons.cancel_markup_for_admins)
 
@@ -65,50 +70,69 @@ async def load_photos(message: types.Message, state: FSMContext):
         else:
             data["photos"] = [message.photo[-1].file_id]
 
-    await message.answer(f"Дабавлено!",
+    await message.answer(f"Добавлено!",
                          reply_markup=buttons.finish_load_photos)
 
 
 async def finish_load_photos(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        last_photo = None
+        product_info_text = (
+            f"Информация о товаре: {data['info']}\n"
+            f"Артикул: {data['article_number']}\n"
+            f"Количество: {data['quantity']}\n"
+            f"Категория: {data['category']}\n"
+            f"Цена: {data['price']}"
+        )
 
-        for i in data['photos']:
-            if i in media_group:
-                pass
-            last_photo = types.InputMediaPhoto(i)
-            media_group.attach_photo(last_photo)
+        media_group = [types.InputMediaPhoto(media=image) for image in data['photos'][:-1]]
 
-        await bot.send_media_group(chat_id=message.from_user.id, media=media_group)
-        await message.answer(text=f"Информация: {data['info']}\n"
-                             f"Артикул: {data['articule']}\n"
-                             f"Количество товара: {data['quantity']}\n"
-                             f"Категория товара: {data['category']}", reply_markup=buttons.submit_markup)
+        last_image = data['photos'][-1]
+        last_media = types.InputMediaPhoto(media=last_image, caption=product_info_text)
+
+        media_group.append(last_media)
+
+        await bot.send_media_group(chat_id=message.chat.id,
+                                   media=media_group)
 
         await message.answer("Всё правильно?", reply_markup=buttons.submit_markup)
         await FSM_fill_products.next()
 
 
+
 async def load_submit(message: types.Message, state: FSMContext):
-    if message.text == "да":
-        await message.answer('Товар добавлен!', reply_markup=buttons.StartClient)
-        await state.finish()
+    async with state.proxy() as data:
+        if message.text == "да":
+            await data_base.connect()
 
-        # Запись в базу данных
+            # Записываем информацию о товаре в таблицу products
+            await save_product_info(state)
 
-    elif message.text.lower() == "нет":
-        await message.answer('Отменено!', reply_markup=buttons.StartClient)
-        await state.finish()
+            # Получаем ID последнего добавленного товара
+            # Это нужно, чтобы привязать фотографии к данному товару
+            product_id = await get_last_inserted_product_id()
 
-    else:
-        await message.answer("Пожалуйста, выберите Да или Нет.")
+            # Записываем фотографии товара в таблицу photos
+            for photo in data['photos']:
+                await save_product_photo(product_id, photo)
+            await message.answer('Товар добавлен!', reply_markup=buttons.StartClient)
+            await state.finish()
+
+            # Здесь можно добавить код для записи информации в базу данных,
+            # если это требуется
+
+        elif message.text.lower() == "нет":
+            await message.answer('Отменено!', reply_markup=buttons.StartClient)
+            await state.finish()
+
+        else:
+            await message.answer("Пожалуйста, выберите Да или Нет.")
 
 
 async def cancel_reg(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is not None:
         await state.finish()
-        await message.answer('Отменено!', reply_markup=buttons.StartClient)
+        await message.answer('Отменено!', reply_markup=buttons.StartAdmin)
 
 
 # =======================================================================================================================
@@ -120,8 +144,8 @@ def register_fill_products(dp: Dispatcher):
     dp.register_message_handler(load_arcticle, state=FSM_fill_products.articule)
     dp.register_message_handler(load_quantity, state=FSM_fill_products.quantity)
     dp.register_message_handler(load_category, state=FSM_fill_products.category)
+    dp.register_message_handler(load_price, state=FSM_fill_products.price)
 
     dp.register_message_handler(load_photos, state=FSM_fill_products.photos, content_types=['photo'])
-    dp.register_message_handler(finish_load_photos, commands=['Сохранить_фотки!'],
-                                state=FSM_fill_products.photos)
+    dp.register_message_handler(finish_load_photos, state=FSM_fill_products.photos)
     dp.register_message_handler(load_submit, state=FSM_fill_products.submit)

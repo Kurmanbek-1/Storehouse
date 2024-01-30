@@ -3,7 +3,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from config import POSTGRES_URL, bot
-from db.utils import get_product_from_category, get_product_photos
+from db.utils import get_preorder_from_category, get_preorder_photos
 
 import asyncpg
 import buttons
@@ -11,34 +11,35 @@ import buttons
 
 # =======================================================================================================================
 
-class all_products_fsm(StatesGroup):
+class all_preorders_fsm(StatesGroup):
     category = State()
 
 
 async def fsm_start(message: types.Message):
-    await all_products_fsm.category.set()
-    await message.answer(f"Категория товара?", reply_markup=buttons.CategoryButtons)
+    await all_preorders_fsm.category.set()
+    await message.answer(f"Категория предзаказа?", reply_markup=buttons.CategoryButtons)
 
 
 """Вывод категорий"""
 async def load_category(message: types.Message, state: FSMContext):
     category = message.text.replace("/", "")
     pool = await asyncpg.create_pool(POSTGRES_URL)
-    products = await get_product_from_category(pool, category)
+    products = await get_preorder_from_category(pool, category)
 
     if products:
         for product in products:
-            # Отправка информации о товаре
+            # Отправка информации о предзаказе
             product_info = (
                 f"Информация: {product['info']}\n"
                 f"Категория: {product['category']}\n"
-                f"Артикул: {product['article_number']}\n"
+                f"Артикул: {product['preorder_article']}\n"
                 f"Количество: {product['quantity']}\n"
+                f"Дата выхода: {product['product_release_date']}\n"
                 f"Цена: {product['price']}"
             )
 
             # Получение и отправка фотографий товара
-            photos = await get_product_photos(pool, product['id'])
+            photos = await get_preorder_photos(pool, product['id'])
             photo_urls = [photo['photo'] for photo in photos]
 
             media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
@@ -52,7 +53,7 @@ async def load_category(message: types.Message, state: FSMContext):
                                        media=media_group)
 
     else:
-        await message.answer("В выбранной категории нет товаров")
+        await message.answer("В выбранной категории нет предзаказов")
 
 
 async def cancel_reg(message: types.Message, state: FSMContext):
@@ -63,7 +64,7 @@ async def cancel_reg(message: types.Message, state: FSMContext):
 
 
 # =======================================================================================================================
-def register_all_products(dp: Dispatcher):
+def register_all_preorders(dp: Dispatcher):
     dp.register_message_handler(cancel_reg, Text(equals="/cancel", ignore_case=True), state="*")
-    dp.register_message_handler(fsm_start, commands=["Товары!", 'all_products'])
-    dp.register_message_handler(load_category, state=all_products_fsm.category)
+    dp.register_message_handler(fsm_start, commands=["Предзаказы!", 'all_pre_orders'])
+    dp.register_message_handler(load_category, state=all_preorders_fsm.category)
