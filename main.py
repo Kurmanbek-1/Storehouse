@@ -2,7 +2,7 @@ from aiogram.utils import executor
 import logging
 from config import dp, bot, Admins, data_base
 
-from handlers import commands
+from handlers import commands, reviews
 from handlers.FSM_for_client import pre_order, Order_for_client, all_products, \
     all_pre_orders, review_client
 from handlers.FSM_for_admins import pre_order_for_admins, fill_products
@@ -31,6 +31,7 @@ fill_products.register_fill_products(dp)
 all_products.register_all_products(dp)
 all_pre_orders.register_all_preorders(dp)
 review_client.register_review(dp)
+reviews.register_all_reviews_for_directors(dp)
 
 # ===========================================================================
 if __name__ == '__main__':

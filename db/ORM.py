@@ -73,3 +73,7 @@ async def save_reviews_info(state):
                 data['photo_review'],
             )
             await connection.execute(sql_queries.REVIEWS_INSERT_QUERY, *values)
+
+async def get_all_reviews(pool):
+    async with pool.acquire() as connection:
+        return await connection.fetch(sql_queries.ALL_REVIEWS_FOR_DIRECTORS)

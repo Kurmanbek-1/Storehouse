@@ -83,3 +83,7 @@ REVIEWS_INSERT_QUERY = """
     VALUES ($1, $2, $3, $4)
     ON CONFLICT DO NOTHING;
 """
+
+ALL_REVIEWS_FOR_DIRECTORS = """
+    SELECT * FROM reviews
+"""
