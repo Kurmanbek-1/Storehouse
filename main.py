@@ -5,7 +5,9 @@ from config import dp, bot, Admins, data_base
 from handlers import commands, reviews
 from handlers.FSM_for_client import pre_order, Order_for_client, all_products, \
     all_pre_orders, review_client
-from handlers.FSM_for_admins import pre_order_for_admins, fill_products
+from handlers.FSM_for_admins import pre_order_for_admins, fill_products, \
+    all_products_admin, all_preorders_admin
+from handlers.FSM_for_directors import all_products_director, all_preorders_director
 import buttons
 
 from db.ORM import create_tables
@@ -32,6 +34,10 @@ all_products.register_all_products(dp)
 all_pre_orders.register_all_preorders(dp)
 review_client.register_review(dp)
 reviews.register_all_reviews_for_directors(dp)
+all_products_admin.register_all_products_admins(dp)
+all_preorders_admin.register_all_preorders_admins(dp)
+all_products_director.register_all_products_director(dp)
+all_preorders_director.register_all_preorders_director(dp)
 
 # ===========================================================================
 if __name__ == '__main__':

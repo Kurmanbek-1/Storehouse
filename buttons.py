@@ -16,6 +16,7 @@ StartDirector = ReplyKeyboardMarkup(resize_keyboard=True,
                                     one_time_keyboard=True,
                                     row_width=2
                                     ).add(KeyboardButton('/Товары'),
+                                          KeyboardButton('/Предзаказы'),
                                           KeyboardButton('/Отзывы'),
                                           KeyboardButton('/Поиск'))
 
@@ -39,6 +40,11 @@ cancel_markup_for_admins = ReplyKeyboardMarkup(resize_keyboard=True,
                                                one_time_keyboard=True,
                                                ).add(cancel_button_for_admins)
 
+cancel_button_for_director = KeyboardButton('Cancel')
+cancel_markup_for_director = ReplyKeyboardMarkup(resize_keyboard=True,
+                                               one_time_keyboard=True,
+                                               ).add(cancel_button_for_director)
+
 submit_markup = ReplyKeyboardMarkup(resize_keyboard=True,
                                     one_time_keyboard=True
                                     ).add(KeyboardButton('да'),
@@ -48,11 +54,27 @@ finish_load_photos = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard
     (KeyboardButton('/Сохранить_фотки!'))
 
 CategoryButtons = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False, row_width=2)
-
 m1 = KeyboardButton('/Обувь')
 m2 = KeyboardButton('/Нижнее_белье')
 m3 = KeyboardButton('/Акссесуары')
 m4 = KeyboardButton('/Верхняя_одежда')
 m5 = KeyboardButton('/Штаны')
-
 CategoryButtons.add(m1, m2, m3, m4, m5, cancel_button_for_client)
+
+
+CategoryButtonsAdmins = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False, row_width=2)
+m1 = KeyboardButton('/Обувь')
+m2 = KeyboardButton('/Нижнее_белье')
+m3 = KeyboardButton('/Акссесуары')
+m4 = KeyboardButton('/Верхняя_одежда')
+m5 = KeyboardButton('/Штаны')
+CategoryButtonsAdmins.add(m1, m2, m3, m4, m5, cancel_button_for_admins)
+
+
+CategoryButtonsDirector = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False, row_width=2)
+m1 = KeyboardButton('/Обувь')
+m2 = KeyboardButton('/Нижнее_белье')
+m3 = KeyboardButton('/Акссесуары')
+m4 = KeyboardButton('/Верхняя_одежда')
+m5 = KeyboardButton('/Штаны')
+CategoryButtonsDirector.add(m1, m2, m3, m4, m5, cancel_button_for_director)
