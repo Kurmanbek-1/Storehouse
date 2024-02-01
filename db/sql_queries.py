@@ -87,3 +87,7 @@ REVIEWS_INSERT_QUERY = """
 ALL_REVIEWS_FOR_DIRECTORS = """
     SELECT * FROM reviews
 """
+
+DELETE_PRODUCT_QUERY = """
+    DELETE FROM products WHERE id = $1;
+"""

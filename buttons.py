@@ -15,8 +15,8 @@ StartClient = ReplyKeyboardMarkup(resize_keyboard=True,
 StartDirector = ReplyKeyboardMarkup(resize_keyboard=True,
                                     one_time_keyboard=True,
                                     row_width=2
-                                    ).add(KeyboardButton('/Товары'),
-                                          KeyboardButton('/Предзаказы'),
+                                    ).add(KeyboardButton('/Товары*'),
+                                          KeyboardButton('/Предзаказы*'),
                                           KeyboardButton('/Отзывы'),
                                           KeyboardButton('/Поиск'))
 
@@ -40,7 +40,7 @@ cancel_markup_for_admins = ReplyKeyboardMarkup(resize_keyboard=True,
                                                one_time_keyboard=True,
                                                ).add(cancel_button_for_admins)
 
-cancel_button_for_director = KeyboardButton('Cancel')
+cancel_button_for_director = KeyboardButton('Отмена🚫')
 cancel_markup_for_director = ReplyKeyboardMarkup(resize_keyboard=True,
                                                one_time_keyboard=True,
                                                ).add(cancel_button_for_director)

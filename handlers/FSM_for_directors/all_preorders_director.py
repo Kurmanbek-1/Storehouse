@@ -74,6 +74,6 @@ async def cancel_reg(message: types.Message, state: FSMContext):
 
 # =======================================================================================================================
 def register_all_preorders_director(dp: Dispatcher):
-    dp.register_message_handler(cancel_reg, Text(equals="Сancel", ignore_case=True), state="*")
-    dp.register_message_handler(fsm_start, commands=["Предзаказы", 'all_preorders_director'])
+    dp.register_message_handler(cancel_reg, Text(equals="Отмена🚫", ignore_case=True), state="*")
+    dp.register_message_handler(fsm_start, commands=["Предзаказы*", 'all_preorders_director'])
     dp.register_message_handler(load_category, state=all_preorders_director_fsm.category)

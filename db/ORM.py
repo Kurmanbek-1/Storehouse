@@ -77,3 +77,8 @@ async def save_reviews_info(state):
 async def get_all_reviews(pool):
     async with pool.acquire() as connection:
         return await connection.fetch(sql_queries.ALL_REVIEWS_FOR_DIRECTORS)
+
+async def delete_product(product_id):
+    product_id = int(product_id)
+    async with pool.acquire() as connection:
+        await connection.execute(sql_queries.DELETE_PRODUCT_QUERY, product_id)
