@@ -91,3 +91,7 @@ ALL_REVIEWS_FOR_DIRECTORS = """
 DELETE_PRODUCT_QUERY = """
     DELETE FROM products WHERE id = $1;
 """
+
+DELETE_PREORDER_QUERY = """
+    DELETE FROM preorders WHERE id = $1;
+"""

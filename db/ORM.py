@@ -82,3 +82,8 @@ async def delete_product(product_id):
     product_id = int(product_id)
     async with pool.acquire() as connection:
         await connection.execute(sql_queries.DELETE_PRODUCT_QUERY, product_id)
+
+async def delete_preorder(preorder_id):
+    preorder_id = int(preorder_id)
+    async with pool.acquire() as connection:
+        await connection.execute(sql_queries.DELETE_PREORDER_QUERY, preorder_id)

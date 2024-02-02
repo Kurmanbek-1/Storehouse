@@ -10,7 +10,7 @@ TOKEN = config('TOKEN')
 
 Admins = []
 
-Director = [659106628, ]
+Director = []
 bot = Bot(TOKEN)
 
 dp = Dispatcher(bot=bot, storage=storage)
