@@ -114,14 +114,14 @@ async def load_submit(message: types.Message, state: FSMContext):
             # Записываем фотографии товара в таблицу photos
             for photo in data['photos']:
                 await save_product_photo(product_id, photo)
-            await message.answer('Товар добавлен!', reply_markup=buttons.StartClient)
+            await message.answer('Товар добавлен!', reply_markup=buttons.StartAdmin)
             await state.finish()
 
             # Здесь можно добавить код для записи информации в базу данных,
             # если это требуется
 
         elif message.text.lower() == "нет":
-            await message.answer('Отменено!', reply_markup=buttons.StartClient)
+            await message.answer('Отменено!', reply_markup=buttons.StartAdmin)
             await state.finish()
 
         else:

@@ -40,7 +40,7 @@ cancel_markup_for_admins = ReplyKeyboardMarkup(resize_keyboard=True,
                                                one_time_keyboard=True,
                                                ).add(cancel_button_for_admins)
 
-cancel_button_for_director = KeyboardButton('Отмена🚫')
+cancel_button_for_director = KeyboardButton('/Отмена🚫')
 cancel_markup_for_director = ReplyKeyboardMarkup(resize_keyboard=True,
                                                one_time_keyboard=True,
                                                ).add(cancel_button_for_director)

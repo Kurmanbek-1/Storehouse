@@ -128,7 +128,7 @@ async def load_submit(message: types.Message, state: FSMContext):
             await state.finish()
 
         elif message.text.lower() == "нет":
-            await message.answer('Отменено!', reply_markup=buttons.StartClient)
+            await message.answer('Отменено!', reply_markup=buttons.StartAdmin)
             await state.finish()
 
         else:

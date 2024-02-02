@@ -2,7 +2,7 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from config import POSTGRES_URL, bot
+from config import POSTGRES_URL, bot, Admins, Director
 from db.utils import get_product_from_category, get_product_photos
 
 import asyncpg
@@ -16,8 +16,11 @@ class all_products_fsm(StatesGroup):
 
 
 async def fsm_start(message: types.Message):
-    await all_products_fsm.category.set()
-    await message.answer(f"Категория товара?", reply_markup=buttons.CategoryButtons)
+    if message.from_user.id in Admins or Director:
+        await message.answer("Эта кнопка для клиентов!")
+    else:
+        await all_products_fsm.category.set()
+        await message.answer(f"Категория товара?", reply_markup=buttons.CategoryButtons)
 
 
 """Вывод категорий"""
