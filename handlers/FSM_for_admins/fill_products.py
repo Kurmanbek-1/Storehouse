@@ -2,9 +2,11 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from config import bot, Admins, data_base
+from config import bot, Admins, data_base, POSTGRES_URL
 import buttons
+import asyncpg
 from db.ORM import save_product_info, save_product_photo, get_last_inserted_product_id
+from db.utils import get_product_from_article
 
 
 # =======================================================================================================================
@@ -36,9 +38,15 @@ async def load_info(message: types.Message, state: FSMContext):
 
 async def load_arcticle(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['article_number'] = message.text
-    await FSM_fill_products.next()
-    await message.answer('Количество товара?')
+        pool = await asyncpg.create_pool(POSTGRES_URL)
+        article_number = message.text
+        products = await get_product_from_article(pool, article_number)
+        if products:
+            await message.answer("Товар с данным артиклем уже существует!")
+        else:
+            data['article_number'] = article_number
+            await FSM_fill_products.next()
+            await message.answer('Количество товара?')
 
 
 async def load_quantity(message: types.Message, state: FSMContext):

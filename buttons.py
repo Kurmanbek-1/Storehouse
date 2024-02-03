@@ -29,6 +29,15 @@ StartAdmin = ReplyKeyboardMarkup(resize_keyboard=True,
                                        KeyboardButton('/Заполнить_предзаказ'),
                                        KeyboardButton('/Поиск'))
 
+CancelSearch = ReplyKeyboardMarkup(resize_keyboard=True,
+                                 one_time_keyboard=True,
+                                 row_width=2
+                                 ).add(KeyboardButton('/Выход из поиска🚫'))
+
+ShowMore = ReplyKeyboardMarkup(resize_keyboard=True,
+                                 one_time_keyboard=True,
+                                 row_width=2
+                                 ).add(KeyboardButton('Далее'))
 
 cancel_button_for_client = KeyboardButton('Отмена')
 cancel_markup_for_client = ReplyKeyboardMarkup(resize_keyboard=True,

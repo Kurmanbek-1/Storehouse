@@ -2,10 +2,11 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from config import bot, Admins, data_base
+from config import bot, Admins, data_base, POSTGRES_URL
 import buttons
 from db.ORM import save_preorder_info, save_preorder_photo, get_last_inserted_product_id
-
+import asyncpg
+from db.utils import get_preorder_from_article
 
 # =======================================================================================================================
 
@@ -40,9 +41,15 @@ async def load_info(message: types.Message, state: FSMContext):
 
 async def data_arcticule(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['preorder_article'] = message.text
-    await FSM_pre_order_for_admins.next()
-    await message.answer('Количество товаров?')
+        pool = await asyncpg.create_pool(POSTGRES_URL)
+        preorder_article = message.text
+        preorders = await get_preorder_from_article(pool, preorder_article)
+        if preorders:
+            await message.answer("Предзаказ с данным артиклем уже существует!")
+        else:
+            data['preorder_article'] = preorder_article
+            await FSM_pre_order_for_admins.next()
+            await message.answer('Количество товара?')
 
 
 async def load_quantity(message: types.Message, state: FSMContext):

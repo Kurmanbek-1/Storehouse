@@ -1,5 +1,4 @@
 from aiogram import types, Dispatcher
-from aiogram.dispatcher.filters import Text
 from config import POSTGRES_URL, bot, Director, Admins
 from db.ORM import get_all_reviews
 
