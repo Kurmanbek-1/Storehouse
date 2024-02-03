@@ -32,7 +32,7 @@ async def load_category(message: types.Message, state: FSMContext):
             products = await get_product_from_category(pool, category)
 
             if products:
-                chunks = [products[i:i + 7] for i in range(0, len(products), 7)]
+                chunks = [products[i:i + 5] for i in range(0, len(products), 5)]
                 data = await state.get_data()
                 current_chunk = data.get("current_chunk", 0)
                 current_products = chunks[current_chunk]
@@ -74,7 +74,7 @@ async def load_category(message: types.Message, state: FSMContext):
             products = await get_product_from_category(pool, category)
 
             if products:
-                chunks = [products[i:i + 7] for i in range(0, len(products), 7)]
+                chunks = [products[i:i + 5] for i in range(0, len(products), 5)]
                 data = await state.get_data()
                 current_chunk = data.get("current_chunk", 0)
                 current_products = chunks[current_chunk]
@@ -134,5 +134,6 @@ def register_all_products_admins(dp: Dispatcher):
     dp.register_message_handler(cancel_reg, Text(equals="Отмена!", ignore_case=True), state="*")
     dp.register_message_handler(fsm_start, commands=["Заказы", 'all_products_admins'])
     dp.register_message_handler(load_category, state=all_products_admin_fsm.category)
-    dp.register_message_handler(load_more, Text(equals=f'Ещё из категории: Обувь', ignore_case=True),
-                                state=all_products_admin_fsm.more_tovars)
+    for category in ["Обувь", "Нижнее_белье", "Акссесуары", "Верхняя_одежда", "Штаны"]:
+        dp.register_message_handler(load_more, Text(equals=f'Ещё из категории: {category}', ignore_case=True),
+                                    state=all_products_admin_fsm.more_tovars)
