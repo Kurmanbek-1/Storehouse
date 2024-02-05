@@ -4,7 +4,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from config import POSTGRES_URL, bot, Admins, Director
 from db.utils import get_product_from_category, get_product_photos
-
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import asyncpg
 import buttons
 
@@ -13,6 +13,7 @@ import buttons
 
 class all_products_fsm(StatesGroup):
     category = State()
+    more_tovars = State()
 
 
 async def fsm_start(message: types.Message):
@@ -25,38 +26,127 @@ async def fsm_start(message: types.Message):
 
 """Вывод категорий"""
 async def load_category(message: types.Message, state: FSMContext):
-    category = message.text.replace("/", "")
-    pool = await asyncpg.create_pool(POSTGRES_URL)
-    products = await get_product_from_category(pool, category)
+    if message.text.startswith("/"):
+        category = message.text.replace("/", "")
+        pool = await asyncpg.create_pool(POSTGRES_URL)
+        products = await get_product_from_category(pool, category)
 
-    if products:
-        for product in products:
-            # Отправка информации о товаре
-            product_info = (
-                f"Информация: {product['info']}\n"
-                f"Категория: {product['category']}\n"
-                f"Артикул: {product['article_number']}\n"
-                f"Количество: {product['quantity']}\n"
-                f"Цена: {product['price']}"
-            )
+        if products:
+            if len(products) <= 5:
+                for product in products:
+                    product_info = (
+                        f"Информация: {product['info']}\n"
+                        f"Категория: {product['category']}\n"
+                        f"Артикул: {product['preorder_article']}\n"
+                        f"Количество: {product['quantity']}\n"
+                        f"Дата выхода: {product['product_release_date']}\n"
+                        f"Цена: {product['price']}"
+                    )
 
-            # Получение и отправка фотографий товара
-            photos = await get_product_photos(pool, product['id'])
-            photo_urls = [photo['photo'] for photo in photos]
+                    photos = await get_product_photos(pool, product['id'])
+                    photo_urls = [photo['photo'] for photo in photos]
 
-            media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
+                    media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
 
-            last_image = photo_urls[-1]
-            last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
+                    last_image = photo_urls[-1]
+                    last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
 
-            media_group.append(last_media)
+                    media_group.append(last_media)
 
-            await bot.send_media_group(chat_id=message.chat.id,
-                                       media=media_group)
+                    await bot.send_media_group(chat_id=message.chat.id, media=media_group)
+                await state.finish()
+                await message.answer(f"Это все товары из категории: {category}",
+                                     reply_markup=buttons.StartClient)
+            else:
+                chunks = [products[i:i + 5] for i in range(0, len(products), 5)]
+                data = await state.get_data()
+                current_chunk = data.get("current_chunk", 0)
+                current_products = chunks[current_chunk]
 
+                for product in current_products:
+                    # Отправка информации о товаре
+                    product_info = (
+                        f"Информация: {product['info']}\n"
+                        f"Категория: {product['category']}\n"
+                        f"Артикул: {product['article_number']}\n"
+                        f"Количество: {product['quantity']}\n"
+                        f"Цена: {product['price']}"
+                    )
+
+                    # Получение и отправка фотографий товара
+                    photos = await get_product_photos(pool, product['id'])
+                    photo_urls = [photo['photo'] for photo in photos]
+
+                    media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
+
+                    last_image = photo_urls[-1]
+                    last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
+
+                    media_group.append(last_media)
+
+                    await bot.send_media_group(chat_id=message.chat.id,
+                                               media=media_group)
+                await state.update_data(current_chunk=current_chunk + 1)
+
+                if current_chunk < len(chunks) - 1:
+                    ShowMore = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+                    ShowMore.add(KeyboardButton(f'Ещё из категории: {category}'))
+                    ShowMore.add(KeyboardButton('Отмена'))
+                    await message.answer("Показать еще?", reply_markup=ShowMore)
+                    await all_products_fsm.next()
+        else:
+            await message.answer("В выбранной категории нет товаров")
     else:
-        await message.answer("В выбранной категории нет товаров")
+        category = message.text.split()[-1]
+        pool = await asyncpg.create_pool(POSTGRES_URL)
+        products = await get_product_from_category(pool, category)
 
+        if products:
+            chunks = [products[i:i + 5] for i in range(0, len(products), 5)]
+            data = await state.get_data()
+            current_chunk = data.get("current_chunk", 0)
+            current_products = chunks[current_chunk]
+
+            for product in current_products:
+                product_info = (
+                    f"Информация: {product['info']}\n"
+                    f"Категория: {product['category']}\n"
+                    f"Артикул: {product['article_number']}\n"
+                    f"Количество: {product['quantity']}\n"
+                    f"Цена: {product['price']}"
+                )
+
+                photos = await get_product_photos(pool, product['id'])
+                photo_urls = [photo['photo'] for photo in photos]
+
+                media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
+
+                last_image = photo_urls[-1]
+                last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
+
+                media_group.append(last_media)
+
+                await bot.send_media_group(chat_id=message.chat.id, media=media_group)
+
+            await state.update_data(current_chunk=current_chunk + 1)
+
+            if current_chunk < len(chunks) - 1:
+                ShowMore = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+                ShowMore.add(KeyboardButton(f'Ещё из категории: {category}'))
+                ShowMore.add(KeyboardButton('Отмена'))
+                await message.answer("Показать еще?", reply_markup=ShowMore)
+                await all_products_fsm.more_tovars.set()
+            else:
+                await state.finish()
+                await message.answer(f"Это все товары из категории: {category}",
+                                     reply_markup=buttons.StartClient)
+        else:
+            await message.answer("В выбранной категории нет товаров")
+
+async def load_more(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is not None:
+        await load_category(message, state)
 
 async def cancel_reg(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
@@ -70,3 +160,6 @@ def register_all_products(dp: Dispatcher):
     dp.register_message_handler(cancel_reg, Text(equals="Отмена", ignore_case=True), state="*")
     dp.register_message_handler(fsm_start, commands=["Товары!", 'all_products'])
     dp.register_message_handler(load_category, state=all_products_fsm.category)
+    for category in ["Обувь", "Нижнее_белье", "Акссесуары", "Верхняя_одежда", "Штаны"]:
+        dp.register_message_handler(load_more, Text(equals=f'Ещё из категории: {category}', ignore_case=True),
+                                    state=all_products_fsm.more_tovars)

@@ -27,49 +27,75 @@ async def load_category(message: types.Message, state: FSMContext):
     if message.from_user.id in Admins:
         if message.text.startswith("/"):
             category = message.text.replace("/", "")
-            print(category)
             pool = await asyncpg.create_pool(POSTGRES_URL)
             products = await get_product_from_category(pool, category)
 
             if products:
-                chunks = [products[i:i + 5] for i in range(0, len(products), 5)]
-                data = await state.get_data()
-                current_chunk = data.get("current_chunk", 0)
-                current_products = chunks[current_chunk]
+                if len(products) <= 5:
+                    for product in products:
+                        product_info = (
+                            f"Информация: {product['info']}\n"
+                            f"Категория: {product['category']}\n"
+                            f"Артикул: {product['preorder_article']}\n"
+                            f"Количество: {product['quantity']}\n"
+                            f"Дата выхода: {product['product_release_date']}\n"
+                            f"Цена: {product['price']}"
+                        )
 
-                for product in current_products:
-                    product_info = (
-                        f"Информация: {product['info']}\n"
-                        f"Категория: {product['category']}\n"
-                        f"Артикул: {product['article_number']}\n"
-                        f"Количество: {product['quantity']}\n"
-                        f"Цена: {product['price']}"
-                    )
+                        photos = await get_product_photos(pool, product['id'])
+                        photo_urls = [photo['photo'] for photo in photos]
 
-                    photos = await get_product_photos(pool, product['id'])
-                    photo_urls = [photo['photo'] for photo in photos]
+                        media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
 
-                    media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
+                        last_image = photo_urls[-1]
+                        last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
 
-                    last_image = photo_urls[-1]
-                    last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
+                        media_group.append(last_media)
 
-                    media_group.append(last_media)
+                        await bot.send_media_group(chat_id=message.chat.id, media=media_group)
+                    await state.finish()
+                    await message.answer(f"Это все товары из категории: {category}",
+                                         reply_markup=buttons.StartAdmin)
 
-                    await bot.send_media_group(chat_id=message.chat.id, media=media_group)
+                else:
+                    chunks = [products[i:i + 5] for i in range(0, len(products), 5)]
+                    data = await state.get_data()
+                    current_chunk = data.get("current_chunk", 0)
+                    current_products = chunks[current_chunk]
 
-                await state.update_data(current_chunk=current_chunk + 1)
+                    for product in current_products:
+                        product_info = (
+                            f"Информация: {product['info']}\n"
+                            f"Категория: {product['category']}\n"
+                            f"Артикул: {product['article_number']}\n"
+                            f"Количество: {product['quantity']}\n"
+                            f"Цена: {product['price']}"
+                        )
 
-                if current_chunk < len(chunks) - 1:
-                    ShowMore = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
-                    ShowMore.add(KeyboardButton(f'Ещё из категории: {category}'))
-                    await message.answer("Показать еще?", reply_markup=ShowMore)
-                    await all_products_admin_fsm.next()
+                        photos = await get_product_photos(pool, product['id'])
+                        photo_urls = [photo['photo'] for photo in photos]
+
+                        media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
+
+                        last_image = photo_urls[-1]
+                        last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
+
+                        media_group.append(last_media)
+
+                        await bot.send_media_group(chat_id=message.chat.id, media=media_group)
+
+                    await state.update_data(current_chunk=current_chunk + 1)
+
+                    if current_chunk < len(chunks) - 1:
+                        ShowMore = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+                        ShowMore.add(KeyboardButton(f'Ещё из категории: {category}'))
+                        ShowMore.add(KeyboardButton('Отмена!'))
+                        await message.answer("Показать еще?", reply_markup=ShowMore)
+                        await all_products_admin_fsm.next()
             else:
                 await message.answer("В выбранной категории нет товаров")
         else:
             category = message.text.split()[-1]
-            print(category)
             pool = await asyncpg.create_pool(POSTGRES_URL)
             products = await get_product_from_category(pool, category)
 
@@ -105,13 +131,17 @@ async def load_category(message: types.Message, state: FSMContext):
                 if current_chunk < len(chunks) - 1:
                     ShowMore = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
                     ShowMore.add(KeyboardButton(f'Ещё из категории: {category}'))
+                    ShowMore.add(KeyboardButton('Отмена!'))
                     await message.answer("Показать еще?", reply_markup=ShowMore)
                     await all_products_admin_fsm.more_tovars.set()
                 else:
-                    await all_products_admin_fsm.category.set()
-                    await message.answer(f"Категория товара?", reply_markup=buttons.CategoryButtonsAdmins)
+                    await state.finish()
+                    await message.answer(f"Это все товары из категории: {category}",
+                                         reply_markup=buttons.StartAdmin)
             else:
                 await message.answer("В выбранной категории нет товаров")
+    else:
+        await message.answer("Вы не Админ!")
 
 
 async def load_more(message: types.Message, state: FSMContext):

@@ -8,7 +8,7 @@ storage = MemoryStorage()
 
 TOKEN = config('TOKEN')
 
-Admins = [659106628, 2009765335, ]
+Admins = []
 
 Director = []
 bot = Bot(TOKEN)

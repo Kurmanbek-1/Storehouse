@@ -4,6 +4,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from config import POSTGRES_URL, bot, Admins, Director
 from db.utils import get_preorder_from_category, get_preorder_photos
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 import asyncpg
 import buttons
@@ -13,6 +14,7 @@ import buttons
 
 class all_preorders_fsm(StatesGroup):
     category = State()
+    more_preorders = State()
 
 
 async def fsm_start(message: types.Message):
@@ -25,38 +27,129 @@ async def fsm_start(message: types.Message):
 
 """Вывод категорий"""
 async def load_category(message: types.Message, state: FSMContext):
-    category = message.text.replace("/", "")
-    pool = await asyncpg.create_pool(POSTGRES_URL)
-    products = await get_preorder_from_category(pool, category)
+    if message.text.startswith("/"):
+        category = message.text.replace("/", "")
+        pool = await asyncpg.create_pool(POSTGRES_URL)
+        preorders = await get_preorder_from_category(pool, category)
 
-    if products:
-        for product in products:
-            # Отправка информации о предзаказе
-            product_info = (
-                f"Информация: {product['info']}\n"
-                f"Категория: {product['category']}\n"
-                f"Артикул: {product['preorder_article']}\n"
-                f"Количество: {product['quantity']}\n"
-                f"Дата выхода: {product['product_release_date']}\n"
-                f"Цена: {product['price']}"
-            )
+        if preorders:
+            if preorders:
+                if len(preorders) <= 5:
+                    for preorder in preorders:
+                        preorder_info = (
+                            f"Информация: {preorder['info']}\n"
+                            f"Категория: {preorder['category']}\n"
+                            f"Артикул: {preorder['preorder_article']}\n"
+                            f"Количество: {preorder['quantity']}\n"
+                            f"Дата выхода: {preorder['product_release_date']}\n"
+                            f"Цена: {preorder['price']}"
+                        )
 
-            # Получение и отправка фотографий товара
-            photos = await get_preorder_photos(pool, product['id'])
-            photo_urls = [photo['photo'] for photo in photos]
+                        photos = await get_preorder_photos(pool, preorder['id'])
+                        photo_urls = [photo['photo'] for photo in photos]
 
-            media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
+                        media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
 
-            last_image = photo_urls[-1]
-            last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
+                        last_image = photo_urls[-1]
+                        last_media = types.InputMediaPhoto(media=last_image, caption=preorder_info)
 
-            media_group.append(last_media)
+                        media_group.append(last_media)
 
-            await bot.send_media_group(chat_id=message.chat.id,
-                                       media=media_group)
+                        await bot.send_media_group(chat_id=message.chat.id, media=media_group)
+                    await state.finish()
+                    await message.answer(f"Это все предзаказы из категории: {category}",
+                                         reply_markup=buttons.StartClient)
+            else:
+                chunks = [preorders[i:i + 5] for i in range(0, len(preorders), 5)]
+                data = await state.get_data()
+                current_chunk = data.get("current_chunk", 0)
+                current_preorders = chunks[current_chunk]
 
+                for preorder in current_preorders:
+                    product_info = (
+                        f"Информация: {preorder['info']}\n"
+                        f"Категория: {preorder['category']}\n"
+                        f"Артикул: {preorder['preorder_article']}\n"
+                        f"Количество: {preorder['quantity']}\n"
+                        f"Дата выхода: {preorder['product_release_date']}\n"
+                        f"Цена: {preorder['price']}"
+                    )
+
+                    photos = await get_preorder_photos(pool, preorder['id'])
+                    photo_urls = [photo['photo'] for photo in photos]
+
+                    media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
+
+                    last_image = photo_urls[-1]
+                    last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
+
+                    media_group.append(last_media)
+
+                    await bot.send_media_group(chat_id=message.chat.id, media=media_group)
+
+                await state.update_data(current_chunk=current_chunk + 1)
+
+                if current_chunk < len(chunks) - 1:
+                    ShowMore = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+                    ShowMore.add(KeyboardButton(f'Ещё из категории: {category}'))
+                    ShowMore.add(KeyboardButton('Отмена'))
+                    await message.answer("Показать еще?", reply_markup=ShowMore)
+                    await all_preorders_fsm.next()
+        else:
+            await message.answer("В выбранной категории нет предзаказов")
     else:
-        await message.answer("В выбранной категории нет предзаказов")
+        category = message.text.split()[-1]
+        pool = await asyncpg.create_pool(POSTGRES_URL)
+        preorders = await get_preorder_from_category(pool, category)
+
+        if preorders:
+            chunks = [preorders[i:i + 5] for i in range(0, len(preorders), 5)]
+            data = await state.get_data()
+            current_chunk = data.get("current_chunk", 0)
+            current_preorders = chunks[current_chunk]
+
+            for preorder in current_preorders:
+                product_info = (
+                    f"Информация: {preorder['info']}\n"
+                    f"Категория: {preorder['category']}\n"
+                    f"Артикул: {preorder['preorder_article']}\n"
+                    f"Количество: {preorder['quantity']}\n"
+                    f"Дата выхода: {preorder['product_release_date']}\n"
+                    f"Цена: {preorder['price']}"
+                )
+
+                photos = await get_preorder_photos(pool, preorder['id'])
+                photo_urls = [photo['photo'] for photo in photos]
+
+                media_group = [types.InputMediaPhoto(media=image) for image in photo_urls[:-1]]
+
+                last_image = photo_urls[-1]
+                last_media = types.InputMediaPhoto(media=last_image, caption=product_info)
+
+                media_group.append(last_media)
+
+                await bot.send_media_group(chat_id=message.chat.id, media=media_group)
+
+            await state.update_data(current_chunk=current_chunk + 1)
+
+            if current_chunk < len(chunks) - 1:
+                ShowMore = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+                ShowMore.add(KeyboardButton(f'Ещё из категории: {category}'))
+                ShowMore.add(KeyboardButton('Отмена'))
+                await message.answer("Показать еще?", reply_markup=ShowMore)
+                await all_preorders_fsm.more_preorders.set()
+            else:
+                await state.finish()
+                await message.answer(f"Это все предзаказы из категории: {category}",
+                                     reply_markup=buttons.StartClient)
+        else:
+            await message.answer("В выбранной категории нет предзаказов")
+
+
+async def load_more_preorders(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is not None:
+        await load_category(message, state)
 
 
 async def cancel_reg(message: types.Message, state: FSMContext):
@@ -71,3 +164,7 @@ def register_all_preorders(dp: Dispatcher):
     dp.register_message_handler(cancel_reg, Text(equals="Отмена", ignore_case=True), state="*")
     dp.register_message_handler(fsm_start, commands=["Предзаказы!", 'all_pre_orders'])
     dp.register_message_handler(load_category, state=all_preorders_fsm.category)
+    for category in ["Обувь", "Нижнее_белье", "Акссесуары", "Верхняя_одежда", "Штаны"]:
+        dp.register_message_handler(load_more_preorders,
+                                    Text(equals=f'Ещё из категории: {category}', ignore_case=True),
+                                    state=all_preorders_fsm.more_preorders)
