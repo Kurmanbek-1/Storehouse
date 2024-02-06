@@ -37,9 +37,8 @@ async def load_category(message: types.Message, state: FSMContext):
                     product_info = (
                         f"Информация: {product['info']}\n"
                         f"Категория: {product['category']}\n"
-                        f"Артикул: {product['preorder_article']}\n"
+                        f"Артикул: {product['article_number']}\n"
                         f"Количество: {product['quantity']}\n"
-                        f"Дата выхода: {product['product_release_date']}\n"
                         f"Цена: {product['price']}"
                     )
 
