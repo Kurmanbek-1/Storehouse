@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  bot:
+    build:
+      context: .  # Путь к Dockerfile (текущая директория)
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=storehouse_tg_bot
+      - DB_USER=postgres
+      - DB_PASSWORD=123
+    # Добавьте другие настройки, такие как порты, сети, монтирование томов, если необходимо
+
+  db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_DB=storehouse_tg_bot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123
+    # Добавьте другие настройки, такие как порты, сети, монтирование томов, если необходимо

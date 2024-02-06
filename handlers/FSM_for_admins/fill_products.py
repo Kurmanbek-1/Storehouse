@@ -37,23 +37,30 @@ async def load_info(message: types.Message, state: FSMContext):
 
 
 async def load_arcticle(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        pool = await asyncpg.create_pool(POSTGRES_URL)
-        article_number = message.text
-        products = await get_product_from_article(pool, article_number)
-        if products:
-            await message.answer("Товар с данным артиклем уже существует!")
-        else:
-            data['article_number'] = article_number
-            await FSM_fill_products.next()
-            await message.answer('Количество товара?')
+    if message.text.isdigit():
+        async with state.proxy() as data:
+            pool = await asyncpg.create_pool(POSTGRES_URL)
+            article_number = message.text
+            products = await get_product_from_article(pool, article_number)
+            if products:
+                await message.answer("Товар с данным артиклем уже существует!")
+            else:
+                data['article_number'] = article_number
+                await FSM_fill_products.next()
+                await message.answer('Количество товара?')
+
+    else:
+        await message.answer('Введите числами!')
 
 
 async def load_quantity(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        data['quantity'] = int(message.text)
-    await FSM_fill_products.next()
-    await message.answer(text='Категория товаров?', reply_markup=buttons.CategoryButtons)
+    if message.text.isdigit():
+        async with state.proxy() as data:
+            data['quantity'] = int(message.text)
+        await FSM_fill_products.next()
+        await message.answer(text='Категория товаров?', reply_markup=buttons.CategoryButtons)
+    else:
+        await message.answer('Введите числами!')
 
 
 async def load_category(message: types.Message, state: FSMContext):
@@ -104,7 +111,6 @@ async def finish_load_photos(message: types.Message, state: FSMContext):
 
         await message.answer("Всё правильно?", reply_markup=buttons.submit_markup)
         await FSM_fill_products.next()
-
 
 
 async def load_submit(message: types.Message, state: FSMContext):

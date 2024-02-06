@@ -8,6 +8,7 @@ from db.ORM import save_preorder_info, save_preorder_photo, get_last_inserted_pr
 import asyncpg
 from db.utils import get_preorder_from_article
 
+
 # =======================================================================================================================
 
 class FSM_pre_order_for_admins(StatesGroup):
@@ -40,23 +41,29 @@ async def load_info(message: types.Message, state: FSMContext):
 
 
 async def data_arcticule(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        pool = await asyncpg.create_pool(POSTGRES_URL)
-        preorder_article = message.text
-        preorders = await get_preorder_from_article(pool, preorder_article)
-        if preorders:
-            await message.answer("Предзаказ с данным артиклем уже существует!")
-        else:
-            data['preorder_article'] = preorder_article
-            await FSM_pre_order_for_admins.next()
-            await message.answer('Количество товара?')
+    if message.text.isdigit():
+        async with state.proxy() as data:
+            pool = await asyncpg.create_pool(POSTGRES_URL)
+            preorder_article = message.text
+            preorders = await get_preorder_from_article(pool, preorder_article)
+            if preorders:
+                await message.answer("Предзаказ с данным артиклем уже существует!")
+            else:
+                data['preorder_article'] = preorder_article
+                await FSM_pre_order_for_admins.next()
+                await message.answer('Количество товара?')
+    else:
+        await message.answer('Введите числами!')
 
 
 async def load_quantity(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        data['quantity'] = int(message.text)
-    await FSM_pre_order_for_admins.next()
-    await message.answer('Категория товаров?', reply_markup=buttons.CategoryButtons)
+    if message.text.isdigit():
+        async with state.proxy() as data:
+            data['quantity'] = int(message.text)
+        await FSM_pre_order_for_admins.next()
+        await message.answer(text='Категория товаров?', reply_markup=buttons.CategoryButtons)
+    else:
+        await message.answer('Введите числами!')
 
 
 async def load_category(message: types.Message, state: FSMContext):
@@ -68,10 +75,14 @@ async def load_category(message: types.Message, state: FSMContext):
 
 
 async def load_price(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        data['price'] = message.text
-    await FSM_pre_order_for_admins.next()
-    await message.answer("Дата выхода?")
+    if message.text.isdigit():
+        async with state.proxy() as data:
+            data['price'] = message.text
+        await FSM_pre_order_for_admins.next()
+        await message.answer("Дата выхода?")
+
+    else:
+        await message.answer('Введите числами!')
 
 
 async def load_date(message: types.Message, state: FSMContext):

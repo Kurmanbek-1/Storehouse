@@ -1,5 +1,5 @@
 from aiogram import types, Dispatcher
-from config import POSTGRES_URL, bot, Admins, Director
+from config import POSTGRES_URL, bot, Admins, Director, Developers
 from db.utils import get_product_from_article, get_product_photos
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -49,7 +49,7 @@ async def search_article(message: types.Message):
 async def cancel_search(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is not None:
-        if message.from_user.id in Admins:
+        if message.from_user.id in Admins or Developers:
             await state.finish()
             await message.answer('Отменено!', reply_markup=buttons.StartAdmin)
         elif message.from_user.id in Director:

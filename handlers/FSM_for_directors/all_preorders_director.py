@@ -36,7 +36,6 @@ async def load_preorder_category(message: types.Message, state: FSMContext):
                             f"Категория: {preorder['category']}\n"
                             f"Артикул: {preorder['preorder_article']}\n"
                             f"Количество: {preorder['quantity']}\n"
-                            f"Дата выхода: {preorder['product_release_date']}\n"
                             f"Цена: {preorder['price']}"
                         )
 

@@ -1,6 +1,5 @@
 from aiogram.utils import executor
 import logging
-from config import dp, bot, Admins, data_base
 
 from handlers import commands, reviews, search
 from handlers.FSM_for_client import pre_order, Order_for_client, all_products, \
@@ -12,10 +11,16 @@ import buttons
 
 from db.ORM import create_tables
 
+import os
+
+from config import dp, bot, Developers, data_base
+
+print("Current working directory:", os.getcwd())
+
 
 # ===========================================================================
 async def on_startup(_):
-    for i in Admins:
+    for i in Developers:
         await bot.send_message(chat_id=i, text="Бот запущен!", reply_markup=buttons.StartAdmin)
     await data_base.connect()
     await create_tables()
